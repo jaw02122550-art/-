@@ -1,0 +1,256 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and stats",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "role": { "type": "string", "enum": ["farmer", "merchant", "researcher", "student"] },
+        "province": { "type": "string" },
+        "expertise": { "type": "string" },
+        "reliabilityScore": { "type": "number" },
+        "coins": { "type": "number" },
+        "exp": { "type": "number" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "role", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Community post",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "hashtags": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string", "enum": ["สมุนไพร", "ผัก", "ผลไม้", "ปศุสัตว์", "ทั่วไป"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Post comment",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MarketplaceItem": {
+      "title": "MarketplaceItem",
+      "description": "Item for sale in marketplace",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "unit": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "videoURL": { "type": "string" },
+        "location": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "paymentInfo": { 
+          "type": "object", 
+          "properties": {
+            "bankName": { "type": "string" },
+            "accountName": { "type": "string" },
+            "accountNumber": { "type": "string" },
+            "promptpay": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MarketplaceOrder": {
+      "title": "MarketplaceOrder",
+      "description": "Order for a marketplace item",
+      "type": "object",
+      "properties": {
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "itemId": { "type": "string" },
+        "itemTitle": { "type": "string" },
+        "itemPrice": { "type": "number" },
+        "itemUnit": { "type": "string" },
+        "itemImage": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"] },
+        "statusHistory": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          } 
+        },
+        "trackingNumber": { "type": "string" },
+        "shippingAddress": { "type": "string" },
+        "addressDetail": { "type": "string" },
+        "subDistrict": { "type": "string" },
+        "district": { "type": "string" },
+        "province": { "type": "string" },
+        "zipcode": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["cod", "online"] },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid"] },
+        "paymentChannel": { "type": "string" },
+        "paymentInfo": { 
+          "type": "object", 
+          "properties": {
+            "bankName": { "type": "string" },
+            "accountName": { "type": "string" },
+            "accountNumber": { "type": "string" },
+            "promptpay": { "type": "string" }
+          }
+        },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AccountingEntry": {
+      "title": "AccountingEntry",
+      "description": "Income or expense record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "relatedOrderId": { "type": "string" }
+      }
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Chat message",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "recipientId": { "type": "string" },
+        "text": { "type": "string" },
+        "image": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "FarmState": {
+      "title": "FarmState",
+      "description": "Virtual farm state",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "plots": { "type": "array", "items": { "$ref": "#/entities/Plot" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Plot": {
+      "title": "Plot",
+      "description": "Single farm plot",
+      "type": "object",
+      "properties": {
+        "plantType": { "type": "string" },
+        "stage": { "type": "string", "enum": ["seed", "sprout", "growing", "harvestable"] },
+        "plantedAt": { "type": "string", "format": "date-time" },
+        "lastWateredAt": { "type": "string", "format": "date-time" },
+        "realPlantId": { "type": "string" }
+      }
+    },
+    "RealPlantRecord": {
+      "title": "RealPlantRecord",
+      "description": "Physical plant record with growth lifecycle",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "plantName": { "type": "string" },
+        "observations": { "type": "array", "items": { "$ref": "#/entities/Observation" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Observation": {
+      "title": "Observation",
+      "description": "Single photo/log entry for a real plant",
+      "type": "object",
+      "properties": {
+        "image": { "type": "string" },
+        "note": { "type": "string" },
+        "aiAnalysis": { "type": "string" },
+        "healthStatus": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notification for the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["comment", "like", "order", "system", "friend_request"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "relatedId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Friendship relationship between two users",
+      "type": "object",
+      "properties": {
+        "requesterId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined", "blocked"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requesterId", "receiverId", "status", "createdAt"]
+    },
+    "SystemKnowledge": {
+      "title": "SystemKnowledge",
+      "description": "AI learned knowledge about system issues",
+      "type": "object",
+      "properties": {
+        "problemDescription": { "type": "string" },
+        "analysis": { "type": "string" },
+        "solution": { "type": "string" },
+        "technicalNote": { "type": "string" },
+        "diagnostics": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/posts/{postId}": { "schema": "Post", "description": "Community posts" },
+    "/posts/{postId}/comments/{commentId}": { "schema": "Comment", "description": "Comments on posts" },
+    "/marketplace/{itemId}": { "schema": "MarketplaceItem", "description": "Marketplace listings" },
+    "/chats/{chatId}/messages/{messageId}": { "schema": "ChatMessage", "description": "Private messages" },
+    "/orders/{orderId}": { "schema": "MarketplaceOrder", "description": "Marketplace orders" },
+    "/accounting/{entryId}": { "schema": "AccountingEntry", "description": "Accounting records" },
+    "/farms/{userId}": { "schema": "FarmState", "description": "Virtual farm data" },
+    "/real_plants/{plantId}": { "schema": "RealPlantRecord", "description": "Real life plant records" },
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" },
+    "/friendships/{friendshipId}": { "schema": "Friendship", "description": "User friendships" },
+    "/system_knowledge/{knowledgeId}": { "schema": "SystemKnowledge", "description": "AI training data" }
+  }
+}

@@ -1,0 +1,215 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ---------------------------------------------------------
+    // 0. Global Safety Net
+    // ---------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Primitives
+    // ---------------------------------------------------------
+    function isSignedIn() { return request.auth != null; }
+    // Relaxed isVerified for preview environment compatibility
+    function isVerified() { return isSignedIn(); } 
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+
+    // ---------------------------------------------------------
+    // Users
+    // ---------------------------------------------------------
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'role', 'createdAt']) &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.role is string &&
+             data.createdAt == request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) && (
+        // Action: Update Profile Info
+        (incoming().diff(existing()).affectedKeys().hasAny(['displayName', 'photoURL', 'bio', 'province', 'expertise', 'coins', 'exp', 'badges', 'reliabilityScore', 'updatedAt'])) &&
+        (incoming().get('role', 'farmer') == existing().get('role', 'farmer')) && 
+        (incoming().get('createdAt', request.time) == existing().get('createdAt', request.time))
+      )) || isAdmin();
+    }
+
+    // ---------------------------------------------------------
+    // Posts
+    // ---------------------------------------------------------
+    function isValidPost(data) {
+      return data.keys().hasAll(['authorId', 'content', 'createdAt']) &&
+             data.authorId == request.auth.uid &&
+             data.content is string && data.content.size() <= 10000 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['authorId', 'content', 'createdAt']) &&
+             data.authorId == request.auth.uid &&
+             data.content is string && data.content.size() <= 1000 &&
+             data.createdAt == request.time;
+    }
+
+    match /posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId);
+      allow list: if isSignedIn();
+      allow create: if isVerified() && isValidId(postId) && isValidPost(incoming());
+      allow update: if isSignedIn() && isValidId(postId) && (
+        // Action: Like
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likesCount']) && incoming().likesCount == existing().get('likesCount', 0) + 1) ||
+        // Action: Comment Increment
+        (incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount']) && incoming().commentsCount == existing().get('commentsCount', 0) + 1) ||
+        // Action: Edit
+        (isOwner(existing().authorId) && isValidPost(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['content', 'images', 'category', 'hashtags']))
+      ) || isAdmin();
+      allow delete: if (isOwner(existing().authorId) || isAdmin()) && isValidId(postId);
+    }
+
+    match /posts/{postId}/comments/{commentId} {
+      allow get: if isSignedIn() && isValidId(postId) && isValidId(commentId);
+      allow list: if isSignedIn() && isValidId(postId);
+      allow create: if isVerified() && isValidId(postId) && isValidId(commentId) && 
+                      isValidComment(incoming()) && 
+                      exists(/databases/$(database)/documents/posts/$(postId));
+      allow delete: if (isOwner(existing().authorId) || isAdmin()) && isValidId(commentId);
+    }
+
+    // ---------------------------------------------------------
+    // Marketplace
+    // ---------------------------------------------------------
+    function isValidMarketItem(data) {
+      return data.keys().hasAll(['sellerId', 'title', 'price', 'createdAt']) &&
+             data.sellerId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             data.price is number && data.price >= 0 &&
+             (data.get('paymentInfo', null) == null || data.paymentInfo is map) &&
+             data.createdAt == request.time;
+    }
+
+    match /marketplace/{itemId} {
+      allow get: if isSignedIn() && isValidId(itemId);
+      allow list: if isSignedIn();
+      allow create: if isVerified() && isValidId(itemId) && isValidMarketItem(incoming());
+      allow update: if (isOwner(existing().sellerId) || isAdmin()) && isValidId(itemId) && (
+        incoming().sellerId == existing().sellerId &&
+        incoming().createdAt == existing().createdAt
+      );
+      allow delete: if (isOwner(existing().sellerId) || isAdmin()) && isValidId(itemId);
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['buyerId', 'sellerId', 'itemId', 'itemTitle', 'totalPrice', 'status', 'createdAt', 'statusHistory', 'paymentMethod']) &&
+             data.buyerId == request.auth.uid &&
+             data.status == 'pending' &&
+             data.createdAt == request.time;
+    }
+
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) && (isOwner(existing().buyerId) || isOwner(existing().sellerId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidId(orderId) && isValidOrder(incoming());
+      allow update: if isSignedIn() && isValidId(orderId) && (
+        (isOwner(existing().sellerId) && incoming().diff(existing()).affectedKeys().hasAny(['status', 'trackingNumber', 'updatedAt', 'statusHistory', 'paymentStatus'])) ||
+        (isOwner(existing().buyerId) && incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt', 'statusHistory', 'shippingAddress', 'paymentMethod', 'paymentChannel']) && incoming().status in ['cancelled', 'delivered', 'pending', 'confirmed', 'shipped'])
+      );
+    }
+
+    function isValidAccounting(data) {
+      return data.keys().hasAll(['userId', 'type', 'amount', 'date']) &&
+             data.userId == request.auth.uid &&
+             (data.type == 'income' || data.type == 'expense') &&
+             data.date == request.time;
+    }
+
+    match /accounting/{entryId} {
+      allow get: if isOwner(existing().userId) && isValidId(entryId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(entryId) && isValidAccounting(incoming());
+      allow update: if isOwner(existing().userId) && isValidId(entryId) && isValidAccounting(incoming());
+      allow delete: if isOwner(existing().userId) && isValidId(entryId);
+    }
+
+    // ---------------------------------------------------------
+    // Chat (Simplified for demo sockets, but securing the DB path)
+    // ---------------------------------------------------------
+    match /chats/{chatId}/messages/{messageId} {
+      allow get: if isSignedIn() && isValidId(chatId) && isValidId(messageId);
+      allow list: if isSignedIn() && isValidId(chatId);
+      allow create: if isSignedIn() && isValidId(chatId) && isValidId(messageId) && incoming().senderId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------
+    // Farm & Plants
+    // ---------------------------------------------------------
+    match /farms/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create, update: if isOwner(userId) && isValidId(userId);
+    }
+
+    match /real_plants/{plantId} {
+      allow get: if isOwner(existing().userId) && isValidId(plantId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(plantId) && incoming().userId == request.auth.uid;
+      allow update: if isOwner(existing().userId) && isValidId(plantId);
+    }
+
+    // ---------------------------------------------------------
+    // Notifications
+    // ---------------------------------------------------------
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'type', 'title', 'message', 'createdAt']) &&
+             data.userId is string &&
+             data.type in ['comment', 'like', 'order', 'system', 'friend_request'] &&
+             data.createdAt == request.time;
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isOwner(existing().userId) && isValidId(notificationId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerified() && isValidId(notificationId) && isValidNotification(incoming());
+      allow update: if isOwner(existing().userId) && isValidId(notificationId) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isOwner(existing().userId) && isValidId(notificationId);
+    }
+
+    // ---------------------------------------------------------
+    // Friendships
+    // ---------------------------------------------------------
+    function isValidFriendship(data) {
+      return data.keys().hasAll(['requesterId', 'receiverId', 'status', 'createdAt']) &&
+             data.requesterId == request.auth.uid &&
+             data.status == 'pending' &&
+             data.createdAt == request.time;
+    }
+
+    match /friendships/{friendshipId} {
+      allow get: if isSignedIn() && isValidId(friendshipId) && (isOwner(existing().requesterId) || isOwner(existing().receiverId));
+      allow list: if isSignedIn() && (resource.data.requesterId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if isVerified() && isValidId(friendshipId) && isValidFriendship(incoming());
+      allow update: if isSignedIn() && isValidId(friendshipId) && (
+        (isOwner(existing().receiverId) && incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt']) && incoming().status in ['accepted', 'declined', 'blocked']) ||
+        (isOwner(existing().requesterId) && incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt']) && incoming().status in ['blocked'])
+      );
+      allow delete: if isSignedIn() && isValidId(friendshipId) && (isOwner(existing().requesterId) || isOwner(existing().receiverId));
+    }
+
+    // ---------------------------------------------------------
+    // System Knowledge (AI Learning)
+    // ---------------------------------------------------------
+    match /system_knowledge/{knowledgeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+  }
+}

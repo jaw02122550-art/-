@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.markdown-body {
+  @apply text-sm leading-relaxed space-y-2;
+}
+.markdown-body p {
+  @apply mb-2;
+}
+.markdown-body ul {
+  @apply list-disc list-inside mb-2;
+}
+.markdown-body ol {
+  @apply list-decimal list-inside mb-2;
+}
+.markdown-body strong {
+  @apply font-bold text-[#5A5A40];
+}

@@ -1,0 +1,12 @@
+{
+  "name": "เกษตรกรไทยยุคใหม่ (Kaset Thai)",
+  "description": "แพลตฟอร์มอเนกประสงค์สำหรับเกษตรกรไทย: AI ผู้ช่วยสมุนไพร, ตลาดซื้อขายออนไลน์, คอมมูนิตี้แลกเปลี่ยนความรู้ และเกมปลูกพืชที่เชื่อมกับชีวิตจริง",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

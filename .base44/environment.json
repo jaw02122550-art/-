@@ -1,0 +1,22 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/api/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "GEMINI_API_KEY",
+      "description": "Google Gemini API key (Google AI Studio → API keys). Used by the AI assistant, the AI problem solver and the news/game AI features. The app boots without it, but AI calls fail.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "FIREBASE_API_KEY",
+      "description": "Web app API key of the Firebase project in firebase-applet-config.json (Firebase Console → Project settings → Your apps → Web app → apiKey). The exported applet ships this value masked, so Google sign-in and all Firestore-backed screens need it.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "GOOGLE_MAPS_PLATFORM_KEY",
+      "description": "Optional. Google Maps JavaScript API key (Google Cloud Console → APIs & Services → Credentials) for the marketplace map view; without it the marketplace shows its list view.",
+      "requiredAtBoot": false
+    }
+  ]
+}

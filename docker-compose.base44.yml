@@ -1,0 +1,51 @@
+# Base44 development environment for Kaset Thai.
+#
+# The whole app is one process: `npm run dev` runs server.ts (tsx), an Express server
+# that mounts Vite in middleware mode and serves both the SPA and the API/websocket on
+# port 3000. Source is bind-mounted and dependencies live in a named volume that is
+# synced from package-lock.json on every container start, so edits show up live.
+services:
+  app:
+    image: node:22
+    working_dir: /app
+    restart: on-failure
+    volumes:
+      - ./:/app
+      - app_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      # Consumed by Vite (>= 6.1) to accept the preview's external hostname.
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+      # Lets src/lib/firebase.ts opt into env-provided Firebase settings in the sandbox.
+      - BASE44_PREVIEW_MODE
+      # Public origins of the sandbox, used only when BASE44_PREVIEW_MODE=1.
+      - BASE44_PUBLIC_HOST_SUFFIX
+    env_file:
+      # Placeholders so the app boots without credentials (see .env.base44-defaults).
+      - ./.env.base44-defaults
+      # Platform-managed secrets; LAST so the user's dashboard values always win.
+      - /run/base44/app.env
+    command:
+      - sh
+      - -ec
+      - |
+        if [ ! -f node_modules/.package-lock.json ]; then
+          npm ci --no-audit --no-fund
+        fi
+        exec npm run dev
+    healthcheck:
+      # Existing read-only API route (server.ts) — probes the Express app, which is what
+      # serves the SPA too.
+      test:
+        - CMD-SHELL
+        - >-
+          node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  app_node_modules:
